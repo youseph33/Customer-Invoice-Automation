@@ -1,0 +1,223 @@
+Dim analysiswb, filteredanalysiswb, agingwb, filteredAgingwb, customerTemplatewb As Workbook
+Dim templatews, customer1ws, analysisws, filteredanalysisws, agingws, filteredAgingws, customerTemplatews As Worksheet
+Dim FilteredAnalysisFilepath, FilteredAgingFilepath, noData_CustomerNames() As String
+Dim filteredanalysisCell, searchHeadings, arrayHeadingValue, customername, columnOrder() As Variant
+Dim headingSearchRange, foundHeading, filteredRange, analysisCopyrange, sortRange, analysisRange As Range
+Dim agingLastRow, visibleCount, analysisLastRow, lastrow As Long
+Dim noDataIndex, i, numColumns As Integer
+ 
+ 
+Sub Filter_and_grab_aging_report_data()
+ 
+ 
+'Sub Filter_Customers_From_Aging_Sheet()
+ 
+'DISABLE ALL TO INCREASE MACRO SPEED
+With Application
+.Calculation = xlCalculationManual
+.ScreenUpdating = False
+.DisplayStatusBar = False
+.EnableEvents = False
+.DisplayAlerts = False
+End With
+ 
+ 
+Set agingwb = Workbooks.Open(customer list)
+ 
+Set agingws = agingwb.Sheets(1)
+ 
+agingws.Range("A:G").Columns.AutoFit
+ 
+'filters the data in column 4 with "yes" this assumes "aging report yes/no" remains in column 4.
+ 
+agingws.Range("A1").AutoFilter Field:=4, Criteria1:="Yes"
+ 
+FilteredAgingFilepath = filtered customer list
+ 
+Set filteredAgingwb = Workbooks.Add
+ 
+Set filteredAgingws = filteredAgingwb.Sheets(1)
+ 
+Set filteredAgingCell = filteredAgingws.Range("A1")
+ 
+agingws.Range("A:G").Copy filteredAgingCell
+ 
+filteredAgingws.Range("A:G").Columns.AutoFit
+ 
+filteredAgingwb.SaveAs (FilteredAgingFilepath)
+ 
+agingwb.Close False
+ 
+filteredAgingwb.Close False
+ 
+'End Sub
+ 
+'Sub Delete_unused_columns_in_analysis_workbook()
+ 
+Set analysiswb = Workbooks.Open(invoice list)
+ 
+Set analysisws = analysiswb.Sheets(1)
+ 
+FilteredAnalysisFilepath = nbl list
+ 
+Set filteredanalysiswb = Workbooks.Add
+ 
+Set filteredanalysisws = filteredanalysiswb.Sheets(1)
+ 
+'creates the headings array, if more columns are added they need to be added to this list
+ 
+searchHeadings = Array("Customer Number", "Freight Carrier", "Ship Date", "Ship to Site", "Class", "Item Status")
+ 
+'headingSearchRange assumes the column headings are in the third row and adds room for more columns to be added to the right
+Set headingSearchRange = analysisws.Range("A3:Z3")
+ 
+If headingSearchRange Is Nothing Then
+ 
+	MsgBox "no search range is found"
+	
+End If
+ 
+'searches each value in the array and assigns it to the variable arrayHeadingValue
+For Each arrayHeadingValue In searchHeadings
+ 
+ 
+'searches the range for the heading value and assigns the range to value to foundHeading
+Set foundHeading = headingSearchRange.Find(What:=arrayHeadingValue, LookIn:=xlValues, LookAt:=xlWhole)
+ 
+ 
+'foundHeading isn't empty i.e. it found a headingvalue then it deletes the column belonging to the heading then continues
+If Not foundHeading Is Nothing Then
+ 
+	foundHeading.EntireColumn.Delete
+	
+End If
+ 
+Next arrayHeadingValue
+ 
+columnOrder = Array(1, 3, 5, 4, 8, 2, 6, 7) ' Specify the desired column order here
+ 
+lastrow = analysisws.Cells(analysisws.Rows.Count, "A").End(xlUp).Row
+ 
+Set filteredanalysisCell = filteredanalysisws.Range("A3")
+ 
+Set analysisRange = analysisws.Range("A3:N" & lastrow)
+ 
+For i = LBound(columnOrder) To UBound(columnOrder)
+	
+ 	analysisRange.Columns(columnOrder(i)).Copy Destination:=filteredanalysisCell.Resize(, 1)
+ 	Set filteredanalysisCell = filteredanalysisCell.Offset(0, 1)
+ 
+Next i
+ 
+analysisws.Range("A1:H2").Copy filteredanalysisws.Range("A1")
+ 
+filteredanalysisws.Range("A:N").Columns.AutoFit
+ 
+filteredanalysiswb.SaveAs (FilteredAnalysisFilepath)
+ 
+analysiswb.Close False
+ 
+filteredanalysiswb.Close False
+ 
+'End Sub
+ 
+'Sub Copy_Data_Over()
+ 
+ Set filteredAgingwb = Workbooks.Open(filtered customer list)
+ Set filteredanalysiswb = Workbooks.Open(filtered nbl list)
+ Set filteredanalysisws = filteredanalysiswb.Sheets(1)
+ analysislastRow1 = filteredanalysisws.Cells(filteredanalysisws.Rows.Count, "A").End(xlUp).Row
+ 
+ 
+ 
+	agingLastRow = filteredAgingwb.Worksheets(1).Cells(Rows.Count, 1).End(xlUp).Row
+    filteredAgingwb.Worksheets(1).Range("A3").AutoFilter
+    filteredanalysisws.Range("A3").AutoFilter
+ 	
+ 	'begins the counter at row 2 because the first row is headers, then it counts how many visible rows there are total
+ Debug.Print agingLastRow
+ counter = 2
+ While counter < agingLastRow
+ 
+ 	
+	Set customerTemplatewb = Workbooks.Open(customer template)
+	Set customerTemplatews = customerTemplatewb.Sheets(1)
+	Set analysisCopyrange = customerTemplatews.Range("A10")
+   ' noDataIndex = 0
+ 	
+	customername = filteredAgingwb.Worksheets(1).Range("A" & counter).Value
+	
+	
+    filteredanalysisws.Range("A3").AutoFilter
+    filteredanalysisws.Range("A3").AutoFilter Field:=1, Criteria1:=customername
+  
+	
+	
+	Set filteredRange = filteredanalysisws.Range("A3:A" & analysislastRow1)
+ 
+	visibleCount = filteredRange.SpecialCells(xlCellTypeVisible).Count
+	Debug.Print customername
+	Debug.Print "Number of visible cells: " & visibleCount
+	
+  	If visibleCount > 1 Then
+  	Debug.Print customername
+	
+    	'This grabs the data from the filtered analysis worksheet in columns B:H starting at row 4.
+    	'This assumes the worksheet doesn't change column amount and data begins at row 4
+    	
+        filteredanalysisws.Range("B4:H" & analysislastRow1).Copy analysisCopyrange
+	
+        'filteredanalysisws.Range("A4:A" & lastRow1).Copy customer1ws.Range("H10")
+    	'This code above would add customername at the last column
+	
+	Else
+   ' If the customername brings no data then it provides a message box saying there were no invoices
+   	MsgBox (customername & " has no invoice data after applying filter")
+   	' Debug.Print customername
+    	'ReDim Preserve noData_CustomerNames(0 To noDataIndex)
+    	'Debug.Print customername
+    	
+   	' noData_CustomerNames(noDataIndex) = customername
+    	'Debug.Print customername
+    	
+    	'noDataIndex = noDataIndex + 1
+    	'Debug.Print customername
+    	'Debug.Print noData_CustomerNames(0)
+    	'Debug.Print noData_CustomerNames(1)
+    	
+    	
+	
+	End If
+ 	
+	counter = counter + 1
+ 	
+	'Saves the sheet as the customers name
+	
+	customerTemplatewb.SaveAs (new customer invoice sheet)
+	customerTemplatewb.Close
+	'Debug.Print customername
+ 	
+ Wend
+	
+ 
+  '  For i = 0 To UBound(noData_CustomerNames)
+ 
+    	
+   	' Debug.Print "Customers with no Invoice Data: " & noData_CustomerNames(i)
+  '  Next i
+ 
+ filteredanalysiswb.Close
+ filteredAgingwb.Close
+ 
+ 'RE-ENABLE ALL AT THE END OF THE MACRO
+With Application
+.Calculation = xlCalculationAutomatic
+.ScreenUpdating = True
+.DisplayStatusBar = True
+.EnableEvents = True
+.DisplayAlerts = True
+End With
+ 
+End Sub
+ 
+
